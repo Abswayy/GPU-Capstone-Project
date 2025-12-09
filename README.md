@@ -154,14 +154,7 @@ The hardware acceleration yields substantial gains over standard implementations
 
 Results vary based on hardware specs, adjustment intricacy, and image size.
 
-## Potential Enhancements
-
-- Enhanced item spotting and following with accelerated learning models
-- AI-driven content improvement
-- Multi-device support
-- Optimized data compression/extraction
-- Additional graphical modifications and alterations
-
 ## Permissions
 
 [Open Source License](PERMISSIONS)
+
