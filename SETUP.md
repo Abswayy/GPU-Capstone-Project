@@ -1,43 +1,39 @@
-# CUDA Video Processor Setup Guide
+# GPU Video Handler Configuration Manual
 
-This document provides detailed instructions for setting up and running the CUDA Video Processor application.
+This guide outlines steps for configuring and operating the GPU Video Handler tool.
 
-## System Requirements
+## Hardware/Software Needs
 
-- NVIDIA GPU with CUDA support (Compute Capability 5.0 or higher recommended)
-- NVIDIA CUDA Toolkit 11.0 or newer
-- OpenCV 4.x with CUDA support
-- C++17 compatible compiler (GCC 7+, Clang 5+, MSVC 19.14+)
-- CMake 3.10 or newer
+- NVIDIA accelerator with parallel compute capability (5.0 or above suggested)
+- NVIDIA Development Kit 11.0 or higher
+- Image Processing Library 4.x with accelerator integration
+- Updated C++ compiler (handles 17 specs)
+- Configuration Tool 3.10 or later
 
-## Installation Steps
+## Configuration Procedure
 
-### 1. Install CUDA Toolkit
+### 1. Set Up Development Kit
 
-#### Ubuntu/Debian:
+#### Linux Variants:
 ```bash
-# Add NVIDIA package repositories
+# Include NVIDIA sources
 wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
 sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
 sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
 sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
 
-# Install CUDA Toolkit
+# Set up kit
 sudo apt update
 sudo apt install cuda-toolkit-11-8
 ```
-
-#### macOS:
-Download and install from: https://developer.nvidia.com/cuda-downloads
-
-#### Windows:
-Download and install from: https://developer.nvidia.com/cuda-downloads
-
-### 2. Install OpenCV with CUDA Support
-
-#### Ubuntu/Debian:
+Apple Systems:
+Obtain and set up from: https://developer.nvidia.com/cuda-downloads
+Microsoft Systems:
+Obtain and set up from: https://developer.nvidia.com/cuda-downloads
+2. Set Up Library with Accelerator
+Linux Variants:
 ```bash
-# Install dependencies
+# Set up required components
 sudo apt update
 sudo apt install -y build-essential cmake git pkg-config libgtk-3-dev \
     libavcodec-dev libavformat-dev libswscale-dev libv4l-dev \
@@ -45,16 +41,16 @@ sudo apt install -y build-essential cmake git pkg-config libgtk-3-dev \
     gfortran openexr libatlas-base-dev python3-dev python3-numpy \
     libtbb2 libtbb-dev libdc1394-dev
 
-# Clone OpenCV and OpenCV contrib repositories
+# Obtain library and extras
 cd ~
 git clone https://github.com/opencv/opencv.git
 git clone https://github.com/opencv/opencv_contrib.git
 
-# Set up build
+# Prepare assembly
 cd opencv
-mkdir build && cd build
+mkdir assembly && cd assembly
 
-# Configure with CMake
+# Set options
 cmake -D CMAKE_BUILD_TYPE=RELEASE \
       -D CMAKE_INSTALL_PREFIX=/usr/local \
       -D OPENCV_EXTRA_MODULES_PATH=~/opencv_contrib/modules \
@@ -67,105 +63,82 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
       -D BUILD_PERF_TESTS=OFF \
       -D BUILD_EXAMPLES=OFF ..
 
-# Compile and install
+# Assemble and deploy
 make -j$(nproc)
 sudo make install
 sudo ldconfig
 ```
-
-#### macOS:
+Apple Systems:
 ```bash
-# Install with Homebrew
+# Set up via package manager
 brew install opencv
 
-# Note: The Homebrew version may not include CUDA support.
-# For CUDA support, you'll need to build from source similar to the Ubuntu instructions.
+# Note: Managed version might lack accelerator. For full support, assemble from code as above.
 ```
-
-#### Windows:
-Download pre-built binaries from: https://opencv.org/releases/
-or build from source following OpenCV documentation.
-
-### 3. Clone and Build the Project
-
+Microsoft Systems:
+Obtain ready builds from: https://opencv.org/releases/
+or assemble following library guides.
+3. Obtain and Assemble Project
 ```bash
-# Clone this repository
-git clone <repository-url>
-cd GPU-Specialisation-Capstone
+# Obtain codebase
+git clone <repo-link>
+cd Parallel-Computing-Final-Project
 
-# Build using the provided script
-./build.sh
+# Assemble with script
+./assemble.sh
 
-# Or manually:
-mkdir -p build
-cd build
+# Or step-by-step:
+mkdir -p assembly
+cd assembly
 cmake ..
-make -j$(nproc)  # On Windows, use: cmake --build . --config Release
+make -j$(nproc)  # Microsoft: cmake --build . --config Release
 ```
-
-## Using Docker (Alternative)
-
-If you prefer using Docker, a Dockerfile is provided:
-
+Container Option
+For container use, a config file is available:
 ```bash
-# Build the Docker image
-docker build -t cuda-video-processor .
+# Assemble image
+docker build -t gpu-video-handler .
 
-# Run the container with GPU support
-docker run --gpus all -it --rm cuda-video-processor --help
+# Operate container with accelerator
+docker run --gpus all -it --rm gpu-video-handler --help
 
-# To process a video file, mount a volume containing your video:
-docker run --gpus all -it --rm -v /path/to/videos:/videos cuda-video-processor --input /videos/input.mp4 --output /videos/output.mp4 --filter thermal
+# Handle stream by mounting storage:
+docker run --gpus all -it --rm -v /path/to/streams:/streams gpu-video-handler --input /streams/source.mp4 --output /streams/result.mp4 --filter heat_map
 ```
+Confirmation Steps
+To confirm proper operation:
+```bash
+./assembly/video_handler --help
+./assembly/video_handler --benchmark
+./assembly/video_handler --input sample.mp4 --filter smooth
+```
+Issue Resolution
+Accelerator Problems
 
-## Verifying Installation
+Issue: No accelerators detected
+Check drivers: nvidia-smi
+Verify kit: nvcc --version
 
-To verify that the application is working correctly:
+Kit version conflict
+Match kit version to library build
 
-1. Run the application with the help flag:
-   ```bash
-   ./build/video_processor --help
-   ```
 
-2. Run the benchmark to test CUDA functionality:
-   ```bash
-   ./build/video_processor --benchmark
-   ```
+Library Problems
 
-3. Process a sample video (or use camera input):
-   ```bash
-   ./build/video_processor --input /path/to/video.mp4 --filter blur
-   ```
+Can't locate library components
+Confirm setup: pkg-config --modversion opencv4
+Verify paths: echo $LD_LIBRARY_PATH
 
-## Troubleshooting
+Execution issue on device features
+Confirm library has accelerator: opencv_version --verbose
 
-### CUDA Issues
 
-- **Error: No CUDA devices found**
-  - Verify NVIDIA drivers are installed: `nvidia-smi`
-  - Check CUDA installation: `nvcc --version`
+Assembly Problems
 
-- **CUDA version mismatch**
-  - Ensure the CUDA Toolkit version matches the one used to build OpenCV
+Tool can't locate kit or library
+Define variables:Bashexport OpenCV_DIR=/path/to/library/setup
+export CUDA_HOME=/usr/local/cuda
 
-### OpenCV Issues
-
-- **Cannot find OpenCV libraries**
-  - Ensure OpenCV is correctly installed: `pkg-config --modversion opencv4`
-  - Check library path: `echo $LD_LIBRARY_PATH`
-
-- **Runtime error about missing GPU functions**
-  - Verify OpenCV was built with CUDA support: `opencv_version --verbose`
-
-### Build Issues
-
-- **CMake cannot find CUDA or OpenCV**
-  - Set environment variables:
-    ```bash
-    export OpenCV_DIR=/path/to/opencv/installation
-    export CUDA_HOME=/usr/local/cuda
-    ```
-
-- **Compilation errors**
-  - Check C++ compiler version: `g++ --version`
-  - Ensure you're using C++17 or later 
+Build failures
+Verify compiler: g++ --version
+Confirm C++17 support
