@@ -1,168 +1,167 @@
-# CUDA Video Processor (REALTIME!)
+# GPU-Accelerated Video Handler
 
-A GPU-accelerated application for real-time video processing, enhancement, and analysis using CUDA.
+A high-performance tool for live video manipulation, improvement, and examination powered by GPU technology.
 
-## Overview
+## Introduction
 
-This capstone project demonstrates the power of GPU computing for real-time video processing. The application leverages CUDA to perform computationally intensive operations on video frames in parallel, achieving significant performance improvements compared to CPU-based processing.
+This final project showcases the capabilities of parallel computing on graphics hardware for immediate video handling. The tool utilizes advanced GPU features to execute demanding computations on video data simultaneously, delivering notable efficiency gains over traditional processor methods.
 
-Key features:
+Main capabilities:
 
-- Multiple GPU-accelerated image filters (blur, sharpen, edge detection, emboss, sepia, etc.)
-- Real-time video processing from files or camera input
-- Advanced visual effects like thermal vision and night vision simulation
-- Motion detection between consecutive frames
-- Optical flow visualization
-- Simple object detection
-- Batch processing for higher throughput
-- Performance benchmarking tools
+- Various accelerated visual adjustments (smoothing, enhancement, boundary identification, relief effect, etc.)
+- Instantaneous video manipulation from recordings or live feeds
+- Sophisticated graphical simulations such as heat mapping and low-light viewing
+- Movement identification across sequential images
+- Flow pattern display
+- Basic item recognition
+- Group handling for improved efficiency
+- Efficiency evaluation utilities
 
-## Requirements
+## Prerequisites
 
-- NVIDIA CUDA Toolkit (11.0+)
-- OpenCV 4.x
-- C++17 compatible compiler
-- CMake 3.10+
+- NVIDIA Parallel Computing Platform (version 11.0 or later)
+- Computer Vision Library 4.x
+- Modern C++ compiler (C++17 support)
+- Build System 3.10 or higher
 
-## Installation
+## Setup
 
-### Option 1: Building from Source
+### Method 1: Compiling from Code
 
-1. Clone this repository:
+1. Duplicate the project:
    ```bash
-   git clone <repository-url>
-   cd GPU-Specialisation-Capstone
+   git clone <project-link>
+   cd Parallel-Computing-Final-Project
    ```
 
-2. Create a build directory and compile:
+2. Set up a compilation folder and build:
    ```bash
-   ./build.sh
+   ./compile-script.sh
    ```
    
-   Or manually:
+   Alternatively, step-by-step:
    ```bash
-   mkdir -p build
-   cd build
+   mkdir -p compilation-dir
+   cd compilation-dir
    cmake ..
    make -j$(nproc)
    ```
 
-### Option 2: Using Docker
+### Method 2: Container-Based
 
-A Dockerfile is provided for containerized development and execution:
-
-```bash
-docker build -t cuda-video-processor .
-docker run --gpus all -it --rm cuda-video-processor
-```
-
-## Usage
-
-The application supports various command-line arguments:
+A container configuration file is included for isolated building and running:
 
 ```bash
-./video_processor [options]
+docker build -t gpu-video-handler .
+docker run --gpus all -it --rm gpu-video-handler
 ```
 
-### Options
+## Operation
 
-- `--input <source>`: Input source (video file path or camera index)
-- `--output <filename>`: Output video file (optional)
-- `--filter <filter_type>`: Filter to apply (default: none)
-- `--transform <transform>`: Transform to apply (default: none)
-- `--intensity <value>`: Filter intensity (0.0-1.0, default: 0.5)
-- `--detect-motion`: Enable motion detection
-- `--optical-flow`: Enable optical flow visualization
-- `--detect-objects`: Enable simple object detection
-- `--benchmark`: Run performance benchmark
-- `--batch-size <size>`: Batch processing size (default: 1)
-- `--help`: Display help message
+The tool accepts multiple command-line parameters:
 
-### Available Filters
-
-- `none`: No filter
-- `blur`: Gaussian blur
-- `sharpen`: Sharpen effect
-- `edge_detect`: Edge detection
-- `emboss`: Emboss effect
-- `sepia`: Sepia tone
-- `grayscale`: Grayscale conversion
-- `negative`: Color inversion
-- `cartoon`: Cartoon effect
-- `sketch`: Sketch effect
-- `night_vision`: Night vision effect
-- `thermal`: Thermal vision effect
-
-### Available Transformations
-
-- `none`: No transformation
-- `rotate_90`: Rotate image by 90 degrees
-- `rotate_180`: Rotate image by 180 degrees
-- `rotate_270`: Rotate image by 270 degrees
-- `flip_h`: Flip horizontally
-- `flip_v`: Flip vertically
-
-### Examples
-
-Process a video file with a blur filter:
 ```bash
-./video_processor --input input_video.mp4 --output output_video.mp4 --filter blur --intensity 0.7
+./video_handler [parameters]
 ```
 
-Use camera input with thermal vision effect:
+### Parameters
+
+- `--input <origin>`: Origin data (recording path or feed number)
+- `--output <file>`: Result recording file (if needed)
+- `--filter <adjustment-type>`: Adjustment to implement (default: no_filter)
+- `--transform <modification>`: Modification to implement (default: no_transform)
+- `--intensity <level>`: Adjustment level (0.0-1.0, default: 0.5)
+- `--detect-motion`: Activate movement spotting
+- `--optical-flow`: Activate flow pattern display
+- `--detect-objects`: Activate basic item spotting
+- `--benchmark`: Execute efficiency test
+- `--batch-size <count>`: Group handling count (default: 1)
+- `--help`: Show operation guide
+
+### Supported Adjustments
+
+- `no_filter`: No adjustment
+- `smooth`: Softening effect
+- `enhance`: Clarity boost
+- `edge_find`: Boundary highlighting
+- `emboss_effect`: Relief simulation
+- `vintage`: Aged tone
+- `monochrome`: Color removal
+- `invert`: Tone reversal
+- `comic_style`: Illustrated look
+- `drawing_style`: Hand-drawn appearance
+- `dark_vision`: Low-light simulation
+- `heat_map`: Temperature visualization
+
+### Supported Modifications
+
+- `no_transform`: No modification
+- `turn_90`: Turn by 90 degrees
+- `turn_180`: Turn by 180 degrees
+- `turn_270`: Turn by 270 degrees
+- `mirror_horiz`: Horizontal reflection
+- `mirror_vert`: Vertical reflection
+
+### Samples
+
+Handle a recording with softening:
 ```bash
-./video_processor --input 0 --filter thermal --intensity 0.8
+./video_handler --input source_recording.mp4 --output result_recording.mp4 --filter smooth --intensity 0.7
 ```
 
-Enable motion detection with edge detection filter:
+Apply live feed with temperature visualization:
 ```bash
-./video_processor --input input_video.mp4 --filter edge_detect --detect-motion
+./video_handler --input 0 --filter heat_map --intensity 0.8
 ```
 
-Run performance benchmark:
+Spot movement with boundary highlighting:
 ```bash
-./video_processor --input input_video.mp4 --benchmark
+./video_handler --input source_recording.mp4 --filter edge_find --detect-motion
 ```
 
-## How it Works
+Perform efficiency test:
+```bash
+./video_handler --input source_recording.mp4 --benchmark
+```
 
-### CUDA-Accelerated Processing Pipeline
+## Functionality Explanation
 
-1. **Frame Acquisition**: Frames are captured from video files or camera.
-2. **GPU Transfer**: Frame data is transferred to the GPU memory.
-3. **Parallel Processing**: Each pixel is processed in parallel using thousands of CUDA threads.
-4. **Filter Application**: Mathematical operations are applied to transform pixel values.
-5. **Result Transfer**: Processed frames are transferred back to CPU memory.
-6. **Display/Storage**: Results are displayed in real-time and/or saved to disk.
+### Accelerated Handling Sequence
 
-### CUDA Kernels
+1. **Data Capture**: Images are obtained from recordings or live sources.
+2. **GPU Upload**: Image information is moved to graphics memory.
+3. **Concurrent Execution**: Each element is handled simultaneously via numerous parallel threads.
+4. **Adjustment Implementation**: Numerical transformations alter element values.
+5. **Outcome Download**: Handled images are retrieved to main memory.
+6. **Presentation/Saving**: Outcomes are shown immediately and/or stored.
 
-The project implements various CUDA kernels for different image processing tasks:
+### Parallel Functions
 
-- **Convolution Kernel**: Applies convolution filters (blur, sharpen, edge detection, etc.)
-- **Color Transformation Kernels**: Applies specialized color effects (sepia, grayscale, etc.)
-- **Motion Detection Kernel**: Computes differences between consecutive frames
-- **Special Effect Kernels**: Implements complex effects like thermal vision and night vision
+The project features multiple parallel functions for diverse image tasks:
 
-## Performance
+- **Matrix Application Function**: Implements matrix-based adjustments (softening, clarity, boundaries, etc.)
+- **Tone Alteration Functions**: Applies specific color changes (aged, monochrome, etc.)
+- **Movement Spotting Function**: Determines variations between images
+- **Unique Effect Functions**: Creates advanced simulations like temperature and low-light
 
-The GPU acceleration provides significant performance improvements over CPU-based implementations:
+## Efficiency
 
-- Processing HD video (1920x1080) in real-time at 30+ FPS
-- 10-20x speedup compared to equivalent CPU implementation
-- Efficient batch processing for higher throughput
+The hardware acceleration yields substantial gains over standard implementations:
 
-Actual performance depends on GPU specifications, filter complexity, and frame resolution.
+- Handling full HD content (1920x1080) instantly at over 30 frames/second
+- 10-20 times faster than comparable standard methods
+- Optimized group handling for better output
 
-## Future Improvements
+Results vary based on hardware specs, adjustment intricacy, and image size.
 
-- Advanced object detection and tracking using CUDA-accelerated ML models
-- Deep learning-based video enhancement
-- Support for multiple GPU devices
-- Hardware-accelerated video encoding/decoding
-- More complex visual effects and transformations
+## Potential Enhancements
 
-## License
+- Enhanced item spotting and following with accelerated learning models
+- AI-driven content improvement
+- Multi-device support
+- Optimized data compression/extraction
+- Additional graphical modifications and alterations
 
+## Permissions
 
-[MIT License](LICENSE) 
+[Open Source License](PERMISSIONS)
