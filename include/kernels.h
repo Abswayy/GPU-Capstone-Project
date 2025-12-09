@@ -1,130 +1,130 @@
-#ifndef IMAGE_KERNELS_H
-#define IMAGE_KERNELS_H
+#ifndef KERNELS_H
+#define KERNELS_H
 
 #include <cuda_runtime.h>
 
-// Types of image filters
-enum class ImageFilter {
-    NO_FILTER,
-    SMOOTH,
-    ENHANCE,
-    EDGE_FIND,
-    EMBOSS_EFFECT,
-    VINTAGE,
-    MONOCHROME,
-    INVERT,
-    COMIC_STYLE,
-    DRAWING_STYLE,
-    DARK_VISION,
-    HEAT_MAP
+// Filter types
+enum class FilterType {
+    NONE,
+    BLUR,
+    SHARPEN,
+    EDGE_DETECT,
+    EMBOSS,
+    SEPIA,
+    GRAYSCALE,
+    NEGATIVE,
+    CARTOON,
+    SKETCH,
+    NIGHT_VISION,
+    THERMAL
 };
 
-// Types of image transformations
-enum class ImageTransform {
-    NO_TRANSFORM,
-    TURN_90,
-    TURN_180,
-    TURN_270,
-    MIRROR_HORIZ,
-    MIRROR_VERT,
-    DISTORT_PERSPECTIVE
+// Transformation types
+enum class TransformType {
+    NONE,
+    ROTATE_90,
+    ROTATE_180,
+    ROTATE_270,
+    FLIP_HORIZONTAL,
+    FLIP_VERTICAL,
+    PERSPECTIVE_WARP
 };
 
-// Params for perspective distortion
+// Structure for warp perspective parameters
 typedef struct {
-    float originCoords[8]; // Origin coordinates (x1,y1,x2,y2,x3,y3,x4,y4)
-    float targetCoords[8]; // Target coordinates (x1,y1,x2,y2,x3,y3,x4,y4)
-} DistortPerspectiveInfo;
+    float srcPoints[8]; // Source points (x1,y1,x2,y2,x3,y3,x4,y4)
+    float dstPoints[8]; // Destination points (x1,y1,x2,y2,x3,y3,x4,y4)
+} WarpPerspectiveParams;
 
-// Params for image filters
+// Structure for filter parameters
 typedef struct {
-    float strength;    // Overall strength level (0.0 - 1.0)
-    float extraParams[4]; // Extra settings for certain filters
-} ImageFilterSettings;
+    float intensity;    // General intensity parameter (0.0 - 1.0)
+    float parameters[4]; // Additional parameters for specific filters
+} FilterParams;
 
-// Create various filter matrices
-void createFilterMatrix(float* matrix, int matrixSize, ImageFilter filterKind, const ImageFilterSettings& settings);
+// Function to generate different types of filters
+void generateFilter(float* filter, int filterWidth, FilterType filterType, const FilterParams& params);
 
-// Wrapper for host-side convolution operation
-void performConvolution(
-    const unsigned char* hostInputImg,
-    unsigned char* hostOutputImg,
-    const float* hostMatrix,
-    int matrixSize,
-    int imgWidth,
-    int imgHeight,
-    int imgChannels,
-    cudaStream_t gpuStream = 0
+// Host wrapper function for convolution kernel
+void applyConvolution(
+    const unsigned char* h_inputImage,
+    unsigned char* h_outputImage,
+    const float* h_filter,
+    int filterWidth,
+    int imageWidth,
+    int imageHeight,
+    int imageChannels,
+    cudaStream_t stream = 0
 );
 
-// Wrapper for host-side special filter applications
-void performSpecialFilter(
-    const unsigned char* hostInputImg,
-    unsigned char* hostOutputImg,
-    ImageFilter filterKind,
-    const ImageFilterSettings& settings,
-    int imgWidth,
-    int imgHeight,
-    int imgChannels,
-    cudaStream_t gpuStream = 0
+// Host wrapper for specialized filter kernels
+void applySpecialFilter(
+    const unsigned char* h_inputImage,
+    unsigned char* h_outputImage,
+    FilterType filterType,
+    const FilterParams& params,
+    int imageWidth,
+    int imageHeight,
+    int imageChannels,
+    cudaStream_t stream = 0
 );
 
-// Wrapper for host-side image transformations
-void performTransformation(
-    const unsigned char* hostInputImg,
-    unsigned char* hostOutputImg,
-    ImageTransform transformKind,
-    int imgWidth,
-    int imgHeight,
-    int imgChannels,
-    const void* transformSettings = nullptr,
-    cudaStream_t gpuStream = 0
+// Host wrapper for image transformation kernels
+void applyTransformation(
+    const unsigned char* h_inputImage,
+    unsigned char* h_outputImage,
+    TransformType transformType,
+    int imageWidth,
+    int imageHeight,
+    int imageChannels,
+    const void* transformParams = nullptr,
+    cudaStream_t stream = 0
 );
 
-// Handle batch of frames (for video handling)
-void handleFrameBatch(
-    const unsigned char** hostInputFrames,
-    unsigned char** hostOutputFrames,
-    int frameCount,
+// Batch process multiple frames (useful for video processing)
+void batchProcessFrames(
+    const unsigned char** h_inputFrames,
+    unsigned char** h_outputFrames,
+    int numFrames,
     int frameWidth,
     int frameHeight,
     int frameChannels,
-    ImageFilter filterKind,
-    const ImageFilterSettings& settings,
-    ImageTransform transformKind = ImageTransform::NO_TRANSFORM,
-    const void* transformSettings = nullptr
+    FilterType filterType,
+    const FilterParams& params,
+    TransformType transformType = TransformType::NONE,
+    const void* transformParams = nullptr
 );
 
-// Detect movement between video frames
-void findMotion(
-    const unsigned char* prevFrame,
-    const unsigned char* currFrame,
-    unsigned char* motionOutput,
+// Motion detection between frames
+void detectMotion(
+    const unsigned char* previousFrame,
+    const unsigned char* currentFrame,
+    unsigned char* motionMask,
     int frameWidth,
     int frameHeight,
-    float motionThreshold,
-    cudaStream_t gpuStream = 0
+    float threshold,
+    cudaStream_t stream = 0
 );
 
-// Calculate optical flow in frames
-void calculateFlow(
-    const unsigned char* prevFrame,
-    const unsigned char* currFrame,
-    float* flowX,
-    float* flowY,
+// Optical flow computation between frames
+void computeOpticalFlow(
+    const unsigned char* previousFrame,
+    const unsigned char* currentFrame,
+    float* flowVectorsX,
+    float* flowVectorsY,
     int frameWidth,
     int frameHeight,
-    cudaStream_t gpuStream = 0
+    cudaStream_t stream = 0
 );
 
-// Create mask for object detection (basic version)
-void createObjectMask(
+// Smart object detection mask generation (simplified)
+void generateObjectMask(
     const unsigned char* inputFrame,
-    unsigned char* maskOutput,
+    unsigned char* objectMask,
     int frameWidth,
     int frameHeight,
-    float detectThreshold,
-    cudaStream_t gpuStream = 0
+    float threshold,
+    cudaStream_t stream = 0
 );
 
-#endif // IMAGE_KERNELS_H
+#endif // KERNELS_H 

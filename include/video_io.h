@@ -1,53 +1,53 @@
-#ifndef VIDEO_HANDLER_H
-#define VIDEO_HANDLER_H
+#ifndef VIDEO_IO_H
+#define VIDEO_IO_H
 
-#include "kernels.h"  // Updated header
+#include "kernels.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// Opaque handle for video handler
-typedef struct VideoHandler VideoHandler;
+// Forward declaration for opaque VideoProcessor handle
+typedef struct VideoProcessor VideoProcessor;
 
-// Init and cleanup handler
-VideoHandler* initVideoHandler();
-void cleanupVideoHandler(VideoHandler* handler);
+// Create and destroy video processor
+VideoProcessor* createVideoProcessor();
+void destroyVideoProcessor(VideoProcessor* processor);
 
-// Setup input source (local file or cam)
-bool initInputSource(VideoHandler* handler, const char* src, bool isLocalFile);
+// Open video source (file or camera)
+bool openVideoSource(VideoProcessor* processor, const char* source, bool isFile);
 
-// Setup output file
-bool initOutputFile(VideoHandler* handler, const char* file);
+// Open output video file
+bool openVideoOutput(VideoProcessor* processor, const char* filename);
 
-// Input status check
-bool isInputActive(VideoHandler* handler);
+// Check if video is open
+bool isVideoOpen(VideoProcessor* processor);
 
-// Retrieve input details
-int getInputWidth(VideoHandler* handler);
-int getInputHeight(VideoHandler* handler);
-int getInputChannels(VideoHandler* handler);
-double getInputFrameRate(VideoHandler* handler);
-int getInputFrameTotal(VideoHandler* handler);
-int getInputFrameCurrent(VideoHandler* handler);
+// Get video properties
+int getVideoWidth(VideoProcessor* processor);
+int getVideoHeight(VideoProcessor* processor);
+int getVideoChannels(VideoProcessor* processor);
+double getVideoFPS(VideoProcessor* processor);
+int getVideoTotalFrames(VideoProcessor* processor);
+int getVideoCurrentFrame(VideoProcessor* processor);
 
-// Frame operations
-bool fetchInputFrame(VideoHandler* handler);
-bool saveOutputFrame(VideoHandler* handler);
+// Read and write frames
+bool readVideoFrame(VideoProcessor* processor);
+bool writeVideoFrame(VideoProcessor* processor);
 
-// GPU frame handling
-bool handleFrameGpu(
-    VideoHandler* handler,
-    ImageFilter filterKind,
-    const ImageFilterSettings& filterSettings,
-    ImageTransform transformKind
+// Process frame with CUDA
+bool processVideoFrame(
+    VideoProcessor* processor,
+    FilterType filterType,
+    const FilterParams& filterParams,
+    TransformType transformType
 );
 
-// Shutdown input
-void shutdownInput(VideoHandler* handler);
+// Close video
+void closeVideo(VideoProcessor* processor);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // VIDEO_HANDLER_H
+#endif // VIDEO_IO_H 

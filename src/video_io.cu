@@ -1,284 +1,284 @@
 #include "video_io.h"
-#include "cuda_utils.h"  // Updated to match renamed header
-#include "kernels.h"     // Updated to match renamed header (kernels.h -> IMAGE_KERNELS_H internally)
+#include "cuda_utils.h"
+#include "kernels.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
-// External C++ functions from video_io_impl.cpp
+// C++ implementation functions (defined in video_io_impl.cpp)
 extern "C" {
-    void* initCvHandler();
-    void cleanupCvHandler(void* handler);
-    bool initCvInput(void* handler, const char* inputSrc, bool isLocalFile);
-    bool initCvOutput(void* handler, const char* outputFile);
-    bool isCvInputActive(void* handler);
-    int getCvImgWidth(void* handler);
-    int getCvImgHeight(void* handler);
-    int getCvImgChannels(void* handler);
-    double getCvFrameRate(void* handler);
-    int getCvFrameTotal(void* handler);
-    int getCvFrameCurrent(void* handler);
-    bool fetchCvFrame(void* handler);
-    bool saveCvFrame(void* handler);
-    void shutdownCvInput(void* handler);
+    void* create_opencv_processor();
+    void destroy_opencv_processor(void* processor);
+    bool open_opencv_video(void* processor, const char* source, bool isFile);
+    bool open_opencv_output(void* processor, const char* filename);
+    bool is_opencv_video_open(void* processor);
+    int get_opencv_width(void* processor);
+    int get_opencv_height(void* processor);
+    int get_opencv_channels(void* processor);
+    double get_opencv_fps(void* processor);
+    int get_opencv_total_frames(void* processor);
+    int get_opencv_current_frame(void* processor);
+    bool read_opencv_frame(void* processor);
+    bool write_opencv_frame(void* processor);
+    void close_opencv_video(void* processor);
     
-    // Access to frame buffers
-    unsigned char* fetchCurrentFrameBuffer(void* handler);
-    unsigned char* fetchOutputFrameBuffer(void* handler);
-    void updateOutputFrameBuffer(void* handler, unsigned char* buffer);
+    // Frame data access
+    unsigned char* get_current_frame_data(void* processor);
+    unsigned char* get_output_frame_data(void* processor);
+    void set_output_frame_data(void* processor, unsigned char* data);
 }
 
-// Structure for handling video
-struct VideoHandler {
-    void* cvHandler;  // Hidden pointer to CV impl
-    unsigned char* currFrameBuffer;
-    unsigned char* outFrameBuffer;
-    int imgWidth;
-    int imgHeight;
-    int imgChannels;
-    size_t bufferSize;
+// VideoProcessor structure
+struct VideoProcessor {
+    void* opencv_processor;  // Opaque pointer to OpenCV implementation
+    unsigned char* current_frame_data;
+    unsigned char* output_frame_data;
+    int width;
+    int height;
+    int channels;
+    size_t frame_size;
     
-    // GPU buffers
-    unsigned char* gpuInputBuffer;
-    unsigned char* gpuOutputBuffer;
+    // CUDA memory buffers
+    unsigned char* d_input_frame;
+    unsigned char* d_output_frame;
 };
 
-// Initialize video handler
-VideoHandler* initVideoHandler() {
-    VideoHandler* handler = (VideoHandler*)malloc(sizeof(VideoHandler));
-    if (!handler) {
-        printf("Failed to allocate VideoHandler memory\n");
+// Create video processor
+VideoProcessor* createVideoProcessor() {
+    VideoProcessor* processor = (VideoProcessor*)malloc(sizeof(VideoProcessor));
+    if (!processor) {
+        printf("Error: Could not allocate VideoProcessor\n");
         return NULL;
     }
     
-    // Set defaults
-    handler->cvHandler = initCvHandler();
-    handler->currFrameBuffer = NULL;
-    handler->outFrameBuffer = NULL;
-    handler->imgWidth = 0;
-    handler->imgHeight = 0;
-    handler->imgChannels = 0;
-    handler->bufferSize = 0;
-    handler->gpuInputBuffer = NULL;
-    handler->gpuOutputBuffer = NULL;
+    // Initialize members
+    processor->opencv_processor = create_opencv_processor();
+    processor->current_frame_data = NULL;
+    processor->output_frame_data = NULL;
+    processor->width = 0;
+    processor->height = 0;
+    processor->channels = 0;
+    processor->frame_size = 0;
+    processor->d_input_frame = NULL;
+    processor->d_output_frame = NULL;
     
-    if (!handler->cvHandler) {
-        printf("Failed to initialize CV handler\n");
-        free(handler);
+    if (!processor->opencv_processor) {
+        printf("Error: Could not create OpenCV processor\n");
+        free(processor);
         return NULL;
     }
     
-    return handler;
+    return processor;
 }
 
-// Cleanup video handler
-void cleanupVideoHandler(VideoHandler* handler) {
-    if (!handler) return;
+// Destroy video processor
+void destroyVideoProcessor(VideoProcessor* processor) {
+    if (!processor) return;
     
-    // Release GPU memory
-    if (handler->gpuInputBuffer) {
-        cudaFree(handler->gpuInputBuffer);
+    // Clean up CUDA memory
+    if (processor->d_input_frame) {
+        cudaFree(processor->d_input_frame);
     }
-    if (handler->gpuOutputBuffer) {
-        cudaFree(handler->gpuOutputBuffer);
-    }
-    
-    // Release host buffers
-    if (handler->currFrameBuffer) {
-        free(handler->currFrameBuffer);
-    }
-    if (handler->outFrameBuffer) {
-        free(handler->outFrameBuffer);
+    if (processor->d_output_frame) {
+        cudaFree(processor->d_output_frame);
     }
     
-    // Cleanup CV handler
-    cleanupCvHandler(handler->cvHandler);
+    // Clean up host memory
+    if (processor->current_frame_data) {
+        free(processor->current_frame_data);
+    }
+    if (processor->output_frame_data) {
+        free(processor->output_frame_data);
+    }
     
-    free(handler);
+    // Clean up OpenCV processor
+    destroy_opencv_processor(processor->opencv_processor);
+    
+    free(processor);
 }
 
-// Initialize input source
-bool initInputSource(VideoHandler* handler, const char* inputSrc, bool isLocalFile) {
-    if (!handler || !handler->cvHandler) {
+// Open video source
+bool openVideoSource(VideoProcessor* processor, const char* source, bool isFile) {
+    if (!processor || !processor->opencv_processor) {
         return false;
     }
     
-    if (!initCvInput(handler->cvHandler, inputSrc, isLocalFile)) {
+    if (!open_opencv_video(processor->opencv_processor, source, isFile)) {
         return false;
     }
     
-    // Retrieve properties
-    handler->imgWidth = getCvImgWidth(handler->cvHandler);
-    handler->imgHeight = getCvImgHeight(handler->cvHandler);
-    handler->imgChannels = getCvImgChannels(handler->cvHandler);
-    handler->bufferSize = handler->imgWidth * handler->imgHeight * handler->imgChannels;
+    // Get video properties
+    processor->width = get_opencv_width(processor->opencv_processor);
+    processor->height = get_opencv_height(processor->opencv_processor);
+    processor->channels = get_opencv_channels(processor->opencv_processor);
+    processor->frame_size = processor->width * processor->height * processor->channels;
     
-    // Allocate buffers on host
-    handler->currFrameBuffer = (unsigned char*)malloc(handler->bufferSize);
-    handler->outFrameBuffer = (unsigned char*)malloc(handler->bufferSize);
+    // Allocate host memory for frame data
+    processor->current_frame_data = (unsigned char*)malloc(processor->frame_size);
+    processor->output_frame_data = (unsigned char*)malloc(processor->frame_size);
     
-    if (!handler->currFrameBuffer || !handler->outFrameBuffer) {
-        printf("Failed to allocate buffer memory\n");
+    if (!processor->current_frame_data || !processor->output_frame_data) {
+        printf("Error: Could not allocate frame memory\n");
         return false;
     }
     
-    // Allocate GPU buffers
-    GPU_VERIFY_CALL(cudaMalloc((void**)&handler->gpuInputBuffer, handler->bufferSize));
-    GPU_VERIFY_CALL(cudaMalloc((void**)&handler->gpuOutputBuffer, handler->bufferSize));
+    // Allocate CUDA memory
+    CUDA_CHECK_ERROR(cudaMalloc((void**)&processor->d_input_frame, processor->frame_size));
+    CUDA_CHECK_ERROR(cudaMalloc((void**)&processor->d_output_frame, processor->frame_size));
     
     return true;
 }
 
-// Initialize output file
-bool initOutputFile(VideoHandler* handler, const char* outputFile) {
-    if (!handler || !handler->cvHandler) {
+// Open output video
+bool openVideoOutput(VideoProcessor* processor, const char* filename) {
+    if (!processor || !processor->opencv_processor) {
         return false;
     }
     
-    return initCvOutput(handler->cvHandler, outputFile);
+    return open_opencv_output(processor->opencv_processor, filename);
 }
 
-// Check input status
-bool isInputActive(VideoHandler* handler) {
-    if (!handler || !handler->cvHandler) {
+// Check if video is open
+bool isVideoOpen(VideoProcessor* processor) {
+    if (!processor || !processor->opencv_processor) {
         return false;
     }
     
-    return isCvInputActive(handler->cvHandler);
+    return is_opencv_video_open(processor->opencv_processor);
 }
 
-// Retrieve video details
-int getInputWidth(VideoHandler* handler) {
-    return handler ? handler->imgWidth : 0;
+// Get video properties
+int getVideoWidth(VideoProcessor* processor) {
+    return processor ? processor->width : 0;
 }
 
-int getInputHeight(VideoHandler* handler) {
-    return handler ? handler->imgHeight : 0;
+int getVideoHeight(VideoProcessor* processor) {
+    return processor ? processor->height : 0;
 }
 
-int getInputChannels(VideoHandler* handler) {
-    return handler ? handler->imgChannels : 0;
+int getVideoChannels(VideoProcessor* processor) {
+    return processor ? processor->channels : 0;
 }
 
-double getInputFrameRate(VideoHandler* handler) {
-    if (!handler || !handler->cvHandler) {
+double getVideoFPS(VideoProcessor* processor) {
+    if (!processor || !processor->opencv_processor) {
         return 0.0;
     }
     
-    return getCvFrameRate(handler->cvHandler);
+    return get_opencv_fps(processor->opencv_processor);
 }
 
-int getInputFrameTotal(VideoHandler* handler) {
-    if (!handler || !handler->cvHandler) {
+int getVideoTotalFrames(VideoProcessor* processor) {
+    if (!processor || !processor->opencv_processor) {
         return 0;
     }
     
-    return getCvFrameTotal(handler->cvHandler);
+    return get_opencv_total_frames(processor->opencv_processor);
 }
 
-int getInputFrameCurrent(VideoHandler* handler) {
-    if (!handler || !handler->cvHandler) {
+int getVideoCurrentFrame(VideoProcessor* processor) {
+    if (!processor || !processor->opencv_processor) {
         return 0;
     }
     
-    return getCvFrameCurrent(handler->cvHandler);
+    return get_opencv_current_frame(processor->opencv_processor);
 }
 
-// Fetch input frame
-bool fetchInputFrame(VideoHandler* handler) {
-    if (!handler || !handler->cvHandler) {
+// Read video frame
+bool readVideoFrame(VideoProcessor* processor) {
+    if (!processor || !processor->opencv_processor) {
         return false;
     }
     
-    if (!fetchCvFrame(handler->cvHandler)) {
+    if (!read_opencv_frame(processor->opencv_processor)) {
         return false;
     }
     
-    // Retrieve buffer from CV
-    unsigned char* frameBuffer = fetchCurrentFrameBuffer(handler->cvHandler);
-    if (!frameBuffer) {
+    // Get frame data from OpenCV
+    unsigned char* frame_data = get_current_frame_data(processor->opencv_processor);
+    if (!frame_data) {
         return false;
     }
     
-    // Copy to local buffer
-    memcpy(handler->currFrameBuffer, frameBuffer, handler->bufferSize);
+    // Copy to our buffer
+    memcpy(processor->current_frame_data, frame_data, processor->frame_size);
     
     return true;
 }
 
-// Save output frame
-bool saveOutputFrame(VideoHandler* handler) {
-    if (!handler || !handler->cvHandler) {
+// Write video frame
+bool writeVideoFrame(VideoProcessor* processor) {
+    if (!processor || !processor->opencv_processor) {
         return false;
     }
     
-    // Update CV output buffer
-    updateOutputFrameBuffer(handler->cvHandler, handler->outFrameBuffer);
+    // Set output frame data in OpenCV processor
+    set_output_frame_data(processor->opencv_processor, processor->output_frame_data);
     
-    return saveCvFrame(handler->cvHandler);
+    return write_opencv_frame(processor->opencv_processor);
 }
 
-// Handle frame with GPU
-bool handleFrameGpu(
-    VideoHandler* handler,
-    ImageFilter filterKind,  // Updated enum
-    const ImageFilterSettings& filterSettings,  // Updated struct
-    ImageTransform transformKind  // Updated enum
+// Process video frame with CUDA
+bool processVideoFrame(
+    VideoProcessor* processor,
+    FilterType filterType,
+    const FilterParams& filterParams,
+    TransformType transformType
 ) {
-    if (!handler || !handler->currFrameBuffer) {
+    if (!processor || !processor->current_frame_data) {
         return false;
     }
     
-    // Transfer input to GPU
-    GPU_VERIFY_CALL(cudaMemcpy(handler->gpuInputBuffer, handler->currFrameBuffer, 
-                                handler->bufferSize, cudaMemcpyHostToDevice));
+    // Copy input frame to GPU
+    CUDA_CHECK_ERROR(cudaMemcpy(processor->d_input_frame, processor->current_frame_data, 
+                                processor->frame_size, cudaMemcpyHostToDevice));
     
-    // Apply transform if specified
-    if (transformKind != ImageTransform::NO_TRANSFORM) {
-        performTransformation(
-            handler->gpuInputBuffer,
-            handler->gpuOutputBuffer,
-            transformKind,
-            handler->imgWidth,
-            handler->imgHeight,
-            handler->imgChannels
+    // Apply transformation first if needed
+    if (transformType != TransformType::NONE) {
+        applyTransformation(
+            processor->d_input_frame,
+            processor->d_output_frame,
+            transformType,
+            processor->width,
+            processor->height,
+            processor->channels
         );
         
-        // Exchange buffers
-        unsigned char* swapTemp = handler->gpuInputBuffer;
-        handler->gpuInputBuffer = handler->gpuOutputBuffer;
-        handler->gpuOutputBuffer = swapTemp;
+        // Swap buffers
+        unsigned char* temp = processor->d_input_frame;
+        processor->d_input_frame = processor->d_output_frame;
+        processor->d_output_frame = temp;
     }
     
-    // Apply filter if specified
-    if (filterKind != ImageFilter::NO_FILTER) {
-        performSpecialFilter(
-            handler->gpuInputBuffer,
-            handler->gpuOutputBuffer,
-            filterKind,
-            filterSettings,
-            handler->imgWidth,
-            handler->imgHeight,
-            handler->imgChannels
+    // Apply filter if needed
+    if (filterType != FilterType::NONE) {
+        applySpecialFilter(
+            processor->d_input_frame,
+            processor->d_output_frame,
+            filterType,
+            filterParams,
+            processor->width,
+            processor->height,
+            processor->channels
         );
     } else {
-        // Copy directly if no filter
-        GPU_VERIFY_CALL(cudaMemcpy(handler->gpuOutputBuffer, handler->gpuInputBuffer, 
-                                    handler->bufferSize, cudaMemcpyDeviceToDevice));
+        // No filter, just copy input to output
+        CUDA_CHECK_ERROR(cudaMemcpy(processor->d_output_frame, processor->d_input_frame, 
+                                    processor->frame_size, cudaMemcpyDeviceToDevice));
     }
     
-    // Transfer back to host
-    GPU_VERIFY_CALL(cudaMemcpy(handler->outFrameBuffer, handler->gpuOutputBuffer, 
-                                handler->bufferSize, cudaMemcpyDeviceToHost));
+    // Copy result back to host
+    CUDA_CHECK_ERROR(cudaMemcpy(processor->output_frame_data, processor->d_output_frame, 
+                                processor->frame_size, cudaMemcpyDeviceToHost));
     
     return true;
 }
 
-// Shutdown input
-void shutdownInput(VideoHandler* handler) {
-    if (!handler || !handler->cvHandler) {
+// Close video
+void closeVideo(VideoProcessor* processor) {
+    if (!processor || !processor->opencv_processor) {
         return;
     }
     
-    shutdownCvInput(handler->cvHandler);
+    close_opencv_video(processor->opencv_processor);
 }

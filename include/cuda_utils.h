@@ -1,5 +1,5 @@
-#ifndef GPU_HELPERS_H
-#define GPU_HELPERS_H
+#ifndef CUDA_UTILS_H
+#define CUDA_UTILS_H
 
 #include <cuda_runtime.h>
 #include <cstdio>
@@ -9,41 +9,41 @@
 extern "C" {
 #endif
 
-// Function to verify CUDA operation status
-void verifyCudaStatus(cudaError_t result, const char *sourceFile, int sourceLine);
+// CUDA error checking function
+void checkCudaError(cudaError_t code, const char *file, int line);
 
-// Macro for verifying CUDA calls
-#define GPU_VERIFY_CALL(expr) { verifyCudaStatus((expr), __FILE__, __LINE__); }
+// Macro for CUDA error checking
+#define CUDA_CHECK_ERROR(ans) { checkCudaError((ans), __FILE__, __LINE__); }
 
-// Basic info structure for GPU device
+// Simple structure for device properties
 typedef struct {
-    char deviceName[256];
-    int computeMajor;
-    int computeMinor;
-    int smCount;
-    size_t globalMemSize;
-    int maxBlockThreads;
-    int maxSmThreads;
-    int threadWarpSize;
-} GpuDeviceInfo;
+    char name[256];
+    int major;
+    int minor;
+    int multiProcessorCount;
+    size_t totalGlobalMem;
+    int maxThreadsPerBlock;
+    int maxThreadsPerMultiProcessor;
+    int warpSize;
+} CudaDeviceProps;
 
-// Retrieve properties of a GPU device
-void fetchGpuDeviceInfo(GpuDeviceInfo* infoPtr, int gpuId);
+// Get CUDA device properties
+void getCudaDeviceProperties(CudaDeviceProps* deviceProps, int deviceId);
 
-// Display properties of a GPU device
-void displayGpuDeviceInfo(int gpuId);
+// Print CUDA device properties
+void printCudaDeviceProperties(int deviceId);
 
-// Determine best grid/block sizes for 2D tasks
-void computeBestDimensions(
-    int imgWidth, 
-    int imgHeight, 
-    dim3* blockSize, 
-    dim3* gridSize,
-    int desiredBlockThreads
+// Calculate optimal grid and block dimensions for a 2D problem
+void calculateOptimalDimensions(
+    int width, 
+    int height, 
+    dim3* blockDim, 
+    dim3* gridDim,
+    int preferredBlockSize
 );
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // GPU_HELPERS_H
+#endif // CUDA_UTILS_H 
