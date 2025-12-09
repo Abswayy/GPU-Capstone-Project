@@ -112,7 +112,7 @@ To confirm proper operation:
 ./assembly/video_handler --benchmark
 ./assembly/video_handler --input sample.mp4 --filter smooth
 ```
-Issue Resolution
+## Issue Resolution
 Accelerator Problems
 
 Issue: No accelerators detected
@@ -123,7 +123,7 @@ Kit version conflict
 Match kit version to library build
 
 
-Library Problems
+## Library Problems
 
 Can't locate library components
 Confirm setup: pkg-config --modversion opencv4
@@ -133,7 +133,7 @@ Execution issue on device features
 Confirm library has accelerator: opencv_version --verbose
 
 
-Assembly Problems
+## Assembly Problems
 
 Tool can't locate kit or library
 Define variables:Bashexport OpenCV_DIR=/path/to/library/setup
