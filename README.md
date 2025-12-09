@@ -1,4 +1,4 @@
-# CUDA Real-time Video Processor
+# CUDA Video Processor (REALTIME!)
 
 A GPU-accelerated application for real-time video processing, enhancement, and analysis using CUDA.
 
@@ -163,5 +163,6 @@ Actual performance depends on GPU specifications, filter complexity, and frame r
 - More complex visual effects and transformations
 
 ## License
+
 
 [MIT License](LICENSE) 
