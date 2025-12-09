@@ -1,63 +1,63 @@
-#include "cuda_utils.h"
+#include "cuda_utils.h"  // Note: Original was cuda_utils.h, but we've renamed the header to GPU_HELPERS_H internally
 #include <cstdio>
 #include <cstring>
 
-// CUDA error checking function implementation
-void checkCudaError(cudaError_t code, const char *file, int line) {
-    if (code != cudaSuccess) {
-        printf("CUDA Error: %s at %s:%d\n", cudaGetErrorString(code), file, line);
-        exit(code);
+// Implementation for verifying CUDA status
+void verifyCudaStatus(cudaError_t result, const char *sourceFile, int sourceLine) {
+    if (result != cudaSuccess) {
+        printf("GPU Operation Failed: %s in %s at line %d\n", cudaGetErrorString(result), sourceFile, sourceLine);
+        exit(result);
     }
 }
 
-// Get CUDA device properties implementation
-void getCudaDeviceProperties(CudaDeviceProps* deviceProps, int deviceId) {
-    if (!deviceProps) return;
+// Implementation to fetch GPU device info
+void fetchGpuDeviceInfo(GpuDeviceInfo* infoPtr, int gpuId) {
+    if (!infoPtr) return;
     
-    cudaDeviceProp prop;
-    CUDA_CHECK_ERROR(cudaGetDeviceProperties(&prop, deviceId));
+    cudaDeviceProp deviceProp;
+    GPU_VERIFY_CALL(cudaGetDeviceProperties(&deviceProp, gpuId));
     
-    strncpy(deviceProps->name, prop.name, 255);
-    deviceProps->name[255] = '\0';  // Ensure null termination
-    deviceProps->major = prop.major;
-    deviceProps->minor = prop.minor;
-    deviceProps->multiProcessorCount = prop.multiProcessorCount;
-    deviceProps->totalGlobalMem = prop.totalGlobalMem;
-    deviceProps->maxThreadsPerBlock = prop.maxThreadsPerBlock;
-    deviceProps->maxThreadsPerMultiProcessor = prop.maxThreadsPerMultiProcessor;
-    deviceProps->warpSize = prop.warpSize;
+    strncpy(infoPtr->deviceName, deviceProp.name, 255);
+    infoPtr->deviceName[255] = '\0';  // Guarantee string termination
+    infoPtr->computeMajor = deviceProp.major;
+    infoPtr->computeMinor = deviceProp.minor;
+    infoPtr->smCount = deviceProp.multiProcessorCount;
+    infoPtr->globalMemSize = deviceProp.totalGlobalMem;
+    infoPtr->maxBlockThreads = deviceProp.maxThreadsPerBlock;
+    infoPtr->maxSmThreads = deviceProp.maxThreadsPerMultiProcessor;
+    infoPtr->threadWarpSize = deviceProp.warpSize;
 }
 
-// Print CUDA device properties implementation
-void printCudaDeviceProperties(int deviceId) {
-    CudaDeviceProps props;
-    getCudaDeviceProperties(&props, deviceId);
+// Implementation to display GPU device info
+void displayGpuDeviceInfo(int gpuId) {
+    GpuDeviceInfo deviceInfo;
+    fetchGpuDeviceInfo(&deviceInfo, gpuId);
     
-    printf("CUDA Device Properties:\n");
-    printf("  Name: %s\n", props.name);
-    printf("  Compute Capability: %d.%d\n", props.major, props.minor);
-    printf("  Number of SMs: %d\n", props.multiProcessorCount);
-    printf("  Total Global Memory: %zu MB\n", props.totalGlobalMem / (1024 * 1024));
-    printf("  Max Threads Per Block: %d\n", props.maxThreadsPerBlock);
-    printf("  Max Threads Per SM: %d\n", props.maxThreadsPerMultiProcessor);
-    printf("  Warp Size: %d\n", props.warpSize);
+    printf("GPU Device Details:\n");
+    printf("  Device Name: %s\n", deviceInfo.deviceName);
+    printf("  Compute Version: %d.%d\n", deviceInfo.computeMajor, deviceInfo.computeMinor);
+    printf("  SM Quantity: %d\n", deviceInfo.smCount);
+    printf("  Global Memory Total: %zu MB\n", deviceInfo.globalMemSize / (1024 * 1024));
+    printf("  Maximum Threads/Block: %d\n", deviceInfo.maxBlockThreads);
+    printf("  Maximum Threads/SM: %d\n", deviceInfo.maxSmThreads);
+    printf("  Warp Thread Count: %d\n", deviceInfo.threadWarpSize);
 }
 
-// Calculate optimal grid and block dimensions implementation
-void calculateOptimalDimensions(
-    int width, 
-    int height, 
-    dim3* blockDim, 
-    dim3* gridDim,
-    int preferredBlockSize
+// Implementation to compute best dimensions
+void computeBestDimensions(
+    int imgWidth, 
+    int imgHeight, 
+    dim3* blockSize, 
+    dim3* gridSize,
+    int desiredBlockThreads
 ) {
-    if (!blockDim || !gridDim) return;
+    if (!blockSize || !gridSize) return;
     
-    blockDim->x = preferredBlockSize;
-    blockDim->y = preferredBlockSize;
-    blockDim->z = 1;
+    blockSize->x = desiredBlockThreads;
+    blockSize->y = desiredBlockThreads;
+    blockSize->z = 1;
     
-    gridDim->x = (width + blockDim->x - 1) / blockDim->x;
-    gridDim->y = (height + blockDim->y - 1) / blockDim->y;
-    gridDim->z = 1;
-} 
+    gridSize->x = (imgWidth + blockSize->x - 1) / blockSize->x;
+    gridSize->y = (imgHeight + blockSize->y - 1) / blockSize->y;
+    gridSize->z = 1;
+}

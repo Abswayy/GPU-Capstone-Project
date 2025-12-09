@@ -6,295 +6,295 @@
 #include <cstring>
 #include <cuda_runtime.h>
 
-#include "cuda_utils.h"
-#include "kernels.h"
-#include "video_io.h"
+#include "cuda_utils.h"  // Updated header
+#include "kernels.h"     // Updated header
+#include "video_io.h"    // Updated header
 
-// Function to print usage information
-void printUsage(const char* programName) {
-    printf("CUDA Video Processor - Real-time Video Enhancement and Analysis\n");
-    printf("Usage: %s [options]\n", programName);
-    printf("Options:\n");
-    printf("  --input <source>           Input source (video file or camera index)\n");
-    printf("  --output <filename>        Output video file (optional)\n");
-    printf("  --filter <filter_type>     Filter to apply (default: none)\n");
-    printf("  --transform <transform>    Transform to apply (default: none)\n");
-    printf("  --intensity <value>        Filter intensity (0.0-1.0, default: 0.5)\n");
-    printf("  --detect-motion            Enable motion detection\n");
-    printf("  --optical-flow             Enable optical flow visualization\n");
-    printf("  --detect-objects           Enable simple object detection\n");
-    printf("  --benchmark                Run performance benchmark\n");
-    printf("  --batch-size <size>        Batch processing size (default: 1)\n");
-    printf("  --help                     Display this help message\n");
+// Display program usage
+void showUsage(const char* appName) {
+    printf("GPU Video Enhancer - Live Video Improvement and Review\n");
+    printf("How to use: %s [flags]\n", appName);
+    printf("Flags:\n");
+    printf("  --input <src>              Source input (file or cam number)\n");
+    printf("  --output <file>            Save to this video file (optional)\n");
+    printf("  --filter <type>            Effect to use (default: no_filter)\n");
+    printf("  --transform <type>         Adjustment to apply (default: no_transform)\n");
+    printf("  --intensity <num>          Effect strength (0.0-1.0, default: 0.5)\n");
+    printf("  --detect-motion            Turn on movement spotting\n");
+    printf("  --optical-flow             Turn on flow display\n");
+    printf("  --detect-objects           Turn on basic item spotting\n");
+    printf("  --benchmark                Perform speed test\n");
+    printf("  --batch-size <num>         Group processing count (default: 1)\n");
+    printf("  --help                     Show this info\n");
     printf("\n");
-    printf("Available filters:\n");
-    printf("  none, blur, sharpen, edge_detect, emboss, sepia, grayscale,\n");
-    printf("  negative, cartoon, sketch, night_vision, thermal\n");
+    printf("Effects available:\n");
+    printf("  no_filter, smooth, enhance, edge_find, emboss_effect, vintage,\n");
+    printf("  monochrome, invert, comic_style, drawing_style, dark_vision, heat_map\n");
     printf("\n");
-    printf("Available transformations:\n");
-    printf("  none, rotate_90, rotate_180, rotate_270, flip_h, flip_v\n");
+    printf("Adjustments available:\n");
+    printf("  no_transform, turn_90, turn_180, turn_270, mirror_horiz, mirror_vert\n");
 }
 
-// Simple string comparison function
-int str_compare(const char* str1, const char* str2) {
-    return strcmp(str1, str2) == 0;
+// Basic string matcher
+int strMatch(const char* a, const char* b) {
+    return strcmp(a, b) == 0;
 }
 
-// Function to parse command line arguments
-bool parseArguments(int argc, char** argv, char* input, char* output,
-                    char* filterName, char* transformName,
-                    float* intensity, bool* detectMotion, bool* opticalFlow,
-                    bool* detectObjects, bool* benchmark, int* batchSize) {
-    // Set default values
-    strcpy(input, "0");  // Default to camera 0
-    strcpy(output, "");
-    strcpy(filterName, "none");
-    strcpy(transformName, "none");
-    *intensity = 0.5f;
-    *detectMotion = false;
-    *opticalFlow = false;
-    *detectObjects = false;
-    *benchmark = false;
-    *batchSize = 1;
+// Process command flags
+bool processFlags(int argCount, char** args, char* srcInput, char* destOutput,
+                  char* effectName, char* adjustName,
+                  float* strength, bool* spotMotion, bool* showFlow,
+                  bool* spotItems, bool* runTest, int* groupSize) {
+    // Defaults
+    strcpy(srcInput, "0");  // Cam 0 default
+    strcpy(destOutput, "");
+    strcpy(effectName, "no_filter");
+    strcpy(adjustName, "no_transform");
+    *strength = 0.5f;
+    *spotMotion = false;
+    *showFlow = false;
+    *spotItems = false;
+    *runTest = false;
+    *groupSize = 1;
     
-    for (int i = 1; i < argc; i++) {
-        if (str_compare(argv[i], "--help")) {
-            printUsage(argv[0]);
+    for (int idx = 1; idx < argCount; idx++) {
+        if (strMatch(args[idx], "--help")) {
+            showUsage(args[0]);
             return false;
-        } else if (str_compare(argv[i], "--input") && i + 1 < argc) {
-            strcpy(input, argv[++i]);
-        } else if (str_compare(argv[i], "--output") && i + 1 < argc) {
-            strcpy(output, argv[++i]);
-        } else if (str_compare(argv[i], "--filter") && i + 1 < argc) {
-            strcpy(filterName, argv[++i]);
-        } else if (str_compare(argv[i], "--transform") && i + 1 < argc) {
-            strcpy(transformName, argv[++i]);
-        } else if (str_compare(argv[i], "--intensity") && i + 1 < argc) {
-            *intensity = atof(argv[++i]);
-        } else if (str_compare(argv[i], "--detect-motion")) {
-            *detectMotion = true;
-        } else if (str_compare(argv[i], "--optical-flow")) {
-            *opticalFlow = true;
-        } else if (str_compare(argv[i], "--detect-objects")) {
-            *detectObjects = true;
-        } else if (str_compare(argv[i], "--benchmark")) {
-            *benchmark = true;
-        } else if (str_compare(argv[i], "--batch-size") && i + 1 < argc) {
-            *batchSize = atoi(argv[++i]);
+        } else if (strMatch(args[idx], "--input") && idx + 1 < argCount) {
+            strcpy(srcInput, args[++idx]);
+        } else if (strMatch(args[idx], "--output") && idx + 1 < argCount) {
+            strcpy(destOutput, args[++idx]);
+        } else if (strMatch(args[idx], "--filter") && idx + 1 < argCount) {
+            strcpy(effectName, args[++idx]);
+        } else if (strMatch(args[idx], "--transform") && idx + 1 < argCount) {
+            strcpy(adjustName, args[++idx]);
+        } else if (strMatch(args[idx], "--intensity") && idx + 1 < argCount) {
+            *strength = atof(args[++idx]);
+        } else if (strMatch(args[idx], "--detect-motion")) {
+            *spotMotion = true;
+        } else if (strMatch(args[idx], "--optical-flow")) {
+            *showFlow = true;
+        } else if (strMatch(args[idx], "--detect-objects")) {
+            *spotItems = true;
+        } else if (strMatch(args[idx], "--benchmark")) {
+            *runTest = true;
+        } else if (strMatch(args[idx], "--batch-size") && idx + 1 < argCount) {
+            *groupSize = atoi(args[++idx]);
         } else {
-            printf("Unknown argument: %s\n", argv[i]);
-            printUsage(argv[0]);
+            printf("Invalid flag: %s\n", args[idx]);
+            showUsage(args[0]);
             return false;
         }
     }
     
-    // Validate arguments
-    if (*intensity < 0.0f || *intensity > 1.0f) {
-        printf("Error: Intensity must be between 0.0 and 1.0\n");
+    // Check values
+    if (*strength < 0.0f || *strength > 1.0f) {
+        printf("Strength must be 0.0 to 1.0\n");
         return false;
     }
     
-    if (*batchSize < 1) {
-        printf("Error: Batch size must be at least 1\n");
+    if (*groupSize < 1) {
+        printf("Group size at least 1 required\n");
         return false;
     }
     
     return true;
 }
 
-// Convert filter name to enum
-FilterType getFilterType(const char* filterName) {
-    if (str_compare(filterName, "blur")) return FilterType::BLUR;
-    if (str_compare(filterName, "sharpen")) return FilterType::SHARPEN;
-    if (str_compare(filterName, "edge_detect")) return FilterType::EDGE_DETECT;
-    if (str_compare(filterName, "emboss")) return FilterType::EMBOSS;
-    if (str_compare(filterName, "sepia")) return FilterType::SEPIA;
-    if (str_compare(filterName, "grayscale")) return FilterType::GRAYSCALE;
-    if (str_compare(filterName, "negative")) return FilterType::NEGATIVE;
-    if (str_compare(filterName, "cartoon")) return FilterType::CARTOON;
-    if (str_compare(filterName, "sketch")) return FilterType::SKETCH;
-    if (str_compare(filterName, "night_vision")) return FilterType::NIGHT_VISION;
-    if (str_compare(filterName, "thermal")) return FilterType::THERMAL;
-    return FilterType::NONE;
+// Map effect string to enum
+ImageFilter mapFilter(const char* effectName) {
+    if (strMatch(effectName, "smooth")) return ImageFilter::SMOOTH;
+    if (strMatch(effectName, "enhance")) return ImageFilter::ENHANCE;
+    if (strMatch(effectName, "edge_find")) return ImageFilter::EDGE_FIND;
+    if (strMatch(effectName, "emboss_effect")) return ImageFilter::EMBOSS_EFFECT;
+    if (strMatch(effectName, "vintage")) return ImageFilter::VINTAGE;
+    if (strMatch(effectName, "monochrome")) return ImageFilter::MONOCHROME;
+    if (strMatch(effectName, "invert")) return ImageFilter::INVERT;
+    if (strMatch(effectName, "comic_style")) return ImageFilter::COMIC_STYLE;
+    if (strMatch(effectName, "drawing_style")) return ImageFilter::DRAWING_STYLE;
+    if (strMatch(effectName, "dark_vision")) return ImageFilter::DARK_VISION;
+    if (strMatch(effectName, "heat_map")) return ImageFilter::HEAT_MAP;
+    return ImageFilter::NO_FILTER;
 }
 
-// Convert transform name to enum
-TransformType getTransformType(const char* transformName) {
-    if (str_compare(transformName, "rotate_90")) return TransformType::ROTATE_90;
-    if (str_compare(transformName, "rotate_180")) return TransformType::ROTATE_180;
-    if (str_compare(transformName, "rotate_270")) return TransformType::ROTATE_270;
-    if (str_compare(transformName, "flip_h")) return TransformType::FLIP_HORIZONTAL;
-    if (str_compare(transformName, "flip_v")) return TransformType::FLIP_VERTICAL;
-    return TransformType::NONE;
+// Map adjustment string to enum
+ImageTransform mapTransform(const char* adjustName) {
+    if (strMatch(adjustName, "turn_90")) return ImageTransform::TURN_90;
+    if (strMatch(adjustName, "turn_180")) return ImageTransform::TURN_180;
+    if (strMatch(adjustName, "turn_270")) return ImageTransform::TURN_270;
+    if (strMatch(adjustName, "mirror_horiz")) return ImageTransform::MIRROR_HORIZ;
+    if (strMatch(adjustName, "mirror_vert")) return ImageTransform::MIRROR_VERT;
+    return ImageTransform::NO_TRANSFORM;
 }
 
-// Simple benchmark function
-void runSimpleBenchmark() {
-    printf("Running simple CUDA benchmark...\n");
+// Basic performance test
+void performBasicTest() {
+    printf("Executing basic GPU test...\n");
     
-    // Test simple image processing
-    int width = 1920;
-    int height = 1080;
-    int channels = 3;
-    size_t imageSize = width * height * channels * sizeof(unsigned char);
+    // Sample image dimensions
+    int w = 1920;
+    int h = 1080;
+    int ch = 3;
+    size_t imgBytes = w * h * ch * sizeof(unsigned char);
     
-    // Allocate host memory
-    unsigned char* h_input = (unsigned char*)malloc(imageSize);
-    unsigned char* h_output = (unsigned char*)malloc(imageSize);
+    // Host allocations
+    unsigned char* hostIn = (unsigned char*)malloc(imgBytes);
+    unsigned char* hostOut = (unsigned char*)malloc(imgBytes);
     
-    if (!h_input || !h_output) {
-        printf("Error: Could not allocate host memory\n");
+    if (!hostIn || !hostOut) {
+        printf("Host allocation failed\n");
         return;
     }
     
-    // Initialize test image
-    for (int i = 0; i < width * height * channels; i++) {
-        h_input[i] = rand() % 256;
+    // Fill test data
+    for (size_t pos = 0; pos < w * h * ch; ++pos) {
+        hostIn[pos] = rand() % 256;
     }
     
-    // Test different filters
-    FilterParams params;
-    params.intensity = 0.5f;
-    for (int i = 0; i < 4; i++) params.parameters[i] = 0.5f;
+    // Prep settings
+    ImageFilterSettings settings;
+    settings.strength = 0.5f;
+    for (int p = 0; p < 4; p++) settings.extraParams[p] = 0.5f;
     
-    printf("Testing filters on %dx%d image:\n", width, height);
+    printf("Evaluating effects on %dx%d image:\n", w, h);
     
-    // Test grayscale
-    printf("Testing Grayscale filter...\n");
-    applySpecialFilter(h_input, h_output, FilterType::GRAYSCALE, params, 
-                      width, height, channels);
-    printf("  Grayscale: OK\n");
+    // Monochrome test
+    printf("Evaluating Monochrome effect...\n");
+    performSpecialFilter(hostIn, hostOut, ImageFilter::MONOCHROME, settings, 
+                        w, h, ch);
+    printf("  Monochrome: Successful\n");
     
-    // Test sepia
-    printf("Testing Sepia filter...\n");
-    applySpecialFilter(h_input, h_output, FilterType::SEPIA, params, 
-                      width, height, channels);
-    printf("  Sepia: OK\n");
+    // Vintage test
+    printf("Evaluating Vintage effect...\n");
+    performSpecialFilter(hostIn, hostOut, ImageFilter::VINTAGE, settings, 
+                        w, h, ch);
+    printf("  Vintage: Successful\n");
     
-    // Test negative
-    printf("Testing Negative filter...\n");
-    applySpecialFilter(h_input, h_output, FilterType::NEGATIVE, params, 
-                      width, height, channels);
-    printf("  Negative: OK\n");
+    // Invert test
+    printf("Evaluating Invert effect...\n");
+    performSpecialFilter(hostIn, hostOut, ImageFilter::INVERT, settings, 
+                        w, h, ch);
+    printf("  Invert: Successful\n");
     
-    // Clean up
-    free(h_input);
-    free(h_output);
+    // Release
+    free(hostIn);
+    free(hostOut);
     
-    printf("Benchmark completed successfully!\n");
+    printf("Test finished OK!\n");
 }
 
-int main(int argc, char** argv) {
-    // Parse command line arguments using C-style strings
-    char input[256], output[256], filterName[64], transformName[64];
-    float intensity;
-    bool detectMotion, opticalFlow, detectObjects, benchmark;
-    int batchSize;
+int main(int argCount, char** args) {
+    // Process flags with C strings
+    char srcInput[256], destOutput[256], effectName[64], adjustName[64];
+    float strength;
+    bool spotMotion, showFlow, spotItems, runTest;
+    int groupSize;
     
-    if (!parseArguments(argc, argv, input, output, filterName, transformName,
-                       &intensity, &detectMotion, &opticalFlow, &detectObjects, 
-                       &benchmark, &batchSize)) {
+    if (!processFlags(argCount, args, srcInput, destOutput, effectName, adjustName,
+                      &strength, &spotMotion, &showFlow, &spotItems, 
+                      &runTest, &groupSize)) {
         return 1;
     }
     
-    // Print CUDA device information
-    int deviceCount = 0;
-    cudaGetDeviceCount(&deviceCount);
+    // Check GPU count
+    int gpuCount = 0;
+    cudaGetDeviceCount(&gpuCount);
     
-    if (deviceCount == 0) {
-        printf("No CUDA devices found! Exiting...\n");
+    if (gpuCount == 0) {
+        printf("No GPUs detected! Stopping...\n");
         return 1;
     }
     
-    // Print CUDA device information
-    printCudaDeviceProperties(0);
+    // Show GPU info
+    displayGpuDeviceInfo(0);
     
-    // Run benchmark if requested
-    if (benchmark) {
-        runSimpleBenchmark();
+    // Execute test if flagged
+    if (runTest) {
+        performBasicTest();
         return 0;
     }
     
-    // Create video processor
-    VideoProcessor* processor = createVideoProcessor();
-    if (!processor) {
-        printf("Error: Could not create video processor\n");
+    // Initialize handler
+    VideoHandler* handler = initVideoHandler();
+    if (!handler) {
+        printf("Handler initialization failed\n");
         return 1;
     }
     
-    // Open input video
-    bool isFile = !(str_compare(input, "0") || str_compare(input, "1"));
-    if (!openVideoSource(processor, input, isFile)) {
-        printf("Error: Could not open video source: %s\n", input);
-        destroyVideoProcessor(processor);
+    // Setup input
+    bool isLocalFile = !(strMatch(srcInput, "0") || strMatch(srcInput, "1"));
+    if (!initInputSource(handler, srcInput, isLocalFile)) {
+        printf("Input source open failed: %s\n", srcInput);
+        cleanupVideoHandler(handler);
         return 1;
     }
     
-    printf("Video opened successfully!\n");
-    printf("Resolution: %dx%d\n", getVideoWidth(processor), getVideoHeight(processor));
-    printf("FPS: %.2f\n", getVideoFPS(processor));
+    printf("Input accessed OK!\n");
+    printf("Dimensions: %dx%d\n", getInputWidth(handler), getInputHeight(handler));
+    printf("Rate: %.2f\n", getInputFrameRate(handler));
     
-    // Get filter and transform types
-    FilterType filterType = getFilterType(filterName);
-    TransformType transformType = getTransformType(transformName);
+    // Map enums
+    ImageFilter filterKind = mapFilter(effectName);
+    ImageTransform transformKind = mapTransform(adjustName);
     
-    // Prepare filter parameters
-    FilterParams filterParams;
-    filterParams.intensity = intensity;
-    for (int i = 0; i < 4; i++) filterParams.parameters[i] = 0.5f;
+    // Setup filter settings
+    ImageFilterSettings filterSettings;
+    filterSettings.strength = strength;
+    for (int p = 0; p < 4; p++) filterSettings.extraParams[p] = 0.5f;
     
-    printf("Processing video with filter: %s, transform: %s, intensity: %.2f\n", 
-           filterName, transformName, intensity);
+    printf("Handling video with effect: %s, adjustment: %s, strength: %.2f\n", 
+           effectName, adjustName, strength);
     
-    // Open output video if specified
-    if (strlen(output) > 0) {
-        if (!openVideoOutput(processor, output)) {
-            printf("Error: Could not open output video: %s\n", output);
-            destroyVideoProcessor(processor);
+    // Setup output if provided
+    if (strlen(destOutput) > 0) {
+        if (!initOutputFile(handler, destOutput)) {
+            printf("Output file open failed: %s\n", destOutput);
+            cleanupVideoHandler(handler);
             return 1;
         }
-        printf("Output video opened: %s\n", output);
+        printf("Output accessed: %s\n", destOutput);
     }
     
-    // Process video frames
-    int frameCount = 0;
+    // Frame loop
+    int processedCount = 0;
     while (true) {
-        // Read frame
-        if (!readVideoFrame(processor)) {
-            printf("End of video or read error\n");
+        // Fetch frame
+        if (!fetchInputFrame(handler)) {
+            printf("Input end or fetch issue\n");
             break;
         }
         
-        // Process frame with CUDA
-        if (!processVideoFrame(processor, filterType, filterParams, transformType)) {
-            printf("Error processing frame %d\n", frameCount);
+        // GPU handling
+        if (!handleFrameGpu(handler, filterKind, filterSettings, transformKind)) {
+            printf("Frame %d handling failed\n", processedCount);
             break;
         }
         
-        // Write frame to output if specified
-        if (strlen(output) > 0) {
-            if (!writeVideoFrame(processor)) {
-                printf("Error writing frame %d\n", frameCount);
+        // Save if output set
+        if (strlen(destOutput) > 0) {
+            if (!saveOutputFrame(handler)) {
+                printf("Frame %d save failed\n", processedCount);
                 break;
             }
         }
         
-        frameCount++;
-        if (frameCount % 100 == 0) {
-            printf("Processed %d frames\n", frameCount);
+        processedCount++;
+        if (processedCount % 100 == 0) {
+            printf("%d frames handled\n", processedCount);
         }
         
-        // For camera input, limit processing to avoid infinite loop in test
-        if (!isFile && frameCount >= 1000) {
-            printf("Stopping camera processing after 1000 frames\n");
+        // Cap cam processing
+        if (!isLocalFile && processedCount >= 1000) {
+            printf("Halting cam after 1000 frames\n");
             break;
         }
     }
     
-    printf("Total frames processed: %d\n", frameCount);
+    printf("Handled total: %d frames\n", processedCount);
     
-    // Clean up
-    destroyVideoProcessor(processor);
+    // Release
+    cleanupVideoHandler(handler);
     
     return 0;
-} 
+}

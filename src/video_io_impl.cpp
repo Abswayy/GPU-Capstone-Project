@@ -7,227 +7,227 @@
 #include <string>
 #include <cstring>
 
-// Internal OpenCV processor class
-class OpenCVProcessor {
+// Hidden CV handler class
+class CvHandler {
 public:
-    cv::VideoCapture videoCapture;
-    cv::VideoWriter videoWriter;
-    cv::Mat currentFrame;
-    cv::Mat outputFrame;
-    int width;
-    int height;
-    int channels;
-    double fps;
-    int totalFrames;
-    int currentFrameNum;
+    cv::VideoCapture inputCapture;
+    cv::VideoWriter outputWriter;
+    cv::Mat currMat;
+    cv::Mat outMat;
+    int imgWidth;
+    int imgHeight;
+    int imgChannels;
+    double frameRate;
+    int frameTotal;
+    int frameCurrent;
     
-    OpenCVProcessor() : width(0), height(0), channels(0), fps(0.0), totalFrames(0), currentFrameNum(0) {}
+    CvHandler() : imgWidth(0), imgHeight(0), imgChannels(0), frameRate(0.0), frameTotal(0), frameCurrent(0) {}
     
-    ~OpenCVProcessor() {
-        close();
+    ~CvHandler() {
+        shutdown();
     }
     
-    void close() {
-        if (videoCapture.isOpened()) {
-            videoCapture.release();
+    void shutdown() {
+        if (inputCapture.isOpened()) {
+            inputCapture.release();
         }
-        if (videoWriter.isOpened()) {
-            videoWriter.release();
+        if (outputWriter.isOpened()) {
+            outputWriter.release();
         }
-        currentFrame.release();
-        outputFrame.release();
+        currMat.release();
+        outMat.release();
     }
 };
 
-// C interface functions
+// C wrapper functions
 extern "C" {
 
-void* create_opencv_processor() {
+void* initCvHandler() {
     try {
-        return new OpenCVProcessor();
+        return new CvHandler();
     } catch (...) {
         return nullptr;
     }
 }
 
-void destroy_opencv_processor(void* processor) {
-    if (processor) {
-        delete static_cast<OpenCVProcessor*>(processor);
+void cleanupCvHandler(void* handler) {
+    if (handler) {
+        delete static_cast<CvHandler*>(handler);
     }
 }
 
-bool open_opencv_video(void* processor, const char* source, bool isFile) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    if (!proc) return false;
+bool initCvInput(void* handler, const char* inputSrc, bool isLocalFile) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    if (!hdl) return false;
     
     try {
-        proc->close();
+        hdl->shutdown();
         
-        if (isFile) {
-            if (!proc->videoCapture.open(std::string(source))) {
-                std::cerr << "Error: Could not open video file: " << source << std::endl;
+        if (isLocalFile) {
+            if (!hdl->inputCapture.open(std::string(inputSrc))) {
+                std::cerr << "Failed to access video file: " << inputSrc << std::endl;
                 return false;
             }
         } else {
-            int cameraIndex = std::atoi(source);
-            if (!proc->videoCapture.open(cameraIndex)) {
-                std::cerr << "Error: Could not open camera: " << cameraIndex << std::endl;
+            int camNum = std::atoi(inputSrc);
+            if (!hdl->inputCapture.open(camNum)) {
+                std::cerr << "Failed to access camera device: " << camNum << std::endl;
                 return false;
             }
         }
         
-        // Get video properties
-        proc->width = static_cast<int>(proc->videoCapture.get(cv::CAP_PROP_FRAME_WIDTH));
-        proc->height = static_cast<int>(proc->videoCapture.get(cv::CAP_PROP_FRAME_HEIGHT));
-        proc->fps = proc->videoCapture.get(cv::CAP_PROP_FPS);
-        proc->totalFrames = static_cast<int>(proc->videoCapture.get(cv::CAP_PROP_FRAME_COUNT));
-        proc->currentFrameNum = 0;
+        // Fetch input details
+        hdl->imgWidth = static_cast<int>(hdl->inputCapture.get(cv::CAP_PROP_FRAME_WIDTH));
+        hdl->imgHeight = static_cast<int>(hdl->inputCapture.get(cv::CAP_PROP_FRAME_HEIGHT));
+        hdl->frameRate = hdl->inputCapture.get(cv::CAP_PROP_FPS);
+        hdl->frameTotal = static_cast<int>(hdl->inputCapture.get(cv::CAP_PROP_FRAME_COUNT));
+        hdl->frameCurrent = 0;
         
-        // Read a frame to determine number of channels
-        cv::Mat frame;
-        if (proc->videoCapture.read(frame)) {
-            proc->channels = frame.channels();
-            // Reset video to beginning
-            if (isFile) {
-                proc->videoCapture.set(cv::CAP_PROP_POS_FRAMES, 0);
+        // Determine channels from a sample frame
+        cv::Mat sampleMat;
+        if (hdl->inputCapture.read(sampleMat)) {
+            hdl->imgChannels = sampleMat.channels();
+            // Reset position if file
+            if (isLocalFile) {
+                hdl->inputCapture.set(cv::CAP_PROP_POS_FRAMES, 0);
             }
         } else {
-            proc->channels = 3;  // Default to 3 channels
+            hdl->imgChannels = 3;  // Fallback to RGB
         }
         
         return true;
-    } catch (const std::exception& e) {
-        std::cerr << "Error opening video source: " << e.what() << std::endl;
+    } catch (const std::exception& err) {
+        std::cerr << "Input initialization error: " << err.what() << std::endl;
         return false;
     }
 }
 
-bool open_opencv_output(void* processor, const char* filename) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    if (!proc) return false;
+bool initCvOutput(void* handler, const char* outputFile) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    if (!hdl) return false;
     
     try {
-        std::string filenameStr(filename);
-        std::string ext = filenameStr.substr(filenameStr.find_last_of('.') + 1);
+        std::string fileStr(outputFile);
+        std::string fileExt = fileStr.substr(fileStr.find_last_of('.') + 1);
         
-        int fourcc;
-        if (ext == "mp4") {
-            fourcc = cv::VideoWriter::fourcc('m', 'p', '4', 'v');
-        } else if (ext == "avi") {
-            fourcc = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
+        int codec;
+        if (fileExt == "mp4") {
+            codec = cv::VideoWriter::fourcc('m', 'p', '4', 'v');
+        } else if (fileExt == "avi") {
+            codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
         } else {
-            fourcc = cv::VideoWriter::fourcc('X', 'V', 'I', 'D');
+            codec = cv::VideoWriter::fourcc('X', 'V', 'I', 'D');
         }
         
-        double fps = proc->fps > 0 ? proc->fps : 30.0;
+        double rate = hdl->frameRate > 0 ? hdl->frameRate : 30.0;
         
-        return proc->videoWriter.open(filenameStr, fourcc, fps, 
-                                     cv::Size(proc->width, proc->height), true);
-    } catch (const std::exception& e) {
-        std::cerr << "Error opening output video: " << e.what() << std::endl;
+        return hdl->outputWriter.open(fileStr, codec, rate, 
+                                     cv::Size(hdl->imgWidth, hdl->imgHeight), true);
+    } catch (const std::exception& err) {
+        std::cerr << "Output initialization error: " << err.what() << std::endl;
         return false;
     }
 }
 
-bool is_opencv_video_open(void* processor) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    return proc ? proc->videoCapture.isOpened() : false;
+bool isCvInputActive(void* handler) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    return hdl ? hdl->inputCapture.isOpened() : false;
 }
 
-int get_opencv_width(void* processor) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    return proc ? proc->width : 0;
+int getCvImgWidth(void* handler) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    return hdl ? hdl->imgWidth : 0;
 }
 
-int get_opencv_height(void* processor) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    return proc ? proc->height : 0;
+int getCvImgHeight(void* handler) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    return hdl ? hdl->imgHeight : 0;
 }
 
-int get_opencv_channels(void* processor) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    return proc ? proc->channels : 0;
+int getCvImgChannels(void* handler) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    return hdl ? hdl->imgChannels : 0;
 }
 
-double get_opencv_fps(void* processor) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    return proc ? proc->fps : 0.0;
+double getCvFrameRate(void* handler) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    return hdl ? hdl->frameRate : 0.0;
 }
 
-int get_opencv_total_frames(void* processor) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    return proc ? proc->totalFrames : 0;
+int getCvFrameTotal(void* handler) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    return hdl ? hdl->frameTotal : 0;
 }
 
-int get_opencv_current_frame(void* processor) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    return proc ? proc->currentFrameNum : 0;
+int getCvFrameCurrent(void* handler) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    return hdl ? hdl->frameCurrent : 0;
 }
 
-bool read_opencv_frame(void* processor) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    if (!proc || !proc->videoCapture.isOpened()) {
-        return false;
-    }
-    
-    bool success = proc->videoCapture.read(proc->currentFrame);
-    if (success) {
-        proc->currentFrameNum++;
-    }
-    return success;
-}
-
-bool write_opencv_frame(void* processor) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    if (!proc || !proc->videoWriter.isOpened()) {
+bool fetchCvFrame(void* handler) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    if (!hdl || !hdl->inputCapture.isOpened()) {
         return false;
     }
     
-    if (proc->outputFrame.empty()) {
+    bool ok = hdl->inputCapture.read(hdl->currMat);
+    if (ok) {
+        hdl->frameCurrent++;
+    }
+    return ok;
+}
+
+bool saveCvFrame(void* handler) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    if (!hdl || !hdl->outputWriter.isOpened()) {
         return false;
     }
     
-    proc->videoWriter.write(proc->outputFrame);
+    if (hdl->outMat.empty()) {
+        return false;
+    }
+    
+    hdl->outputWriter.write(hdl->outMat);
     return true;
 }
 
-void close_opencv_video(void* processor) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    if (proc) {
-        proc->close();
+void shutdownCvInput(void* handler) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    if (hdl) {
+        hdl->shutdown();
     }
 }
 
-unsigned char* get_current_frame_data(void* processor) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    if (!proc || proc->currentFrame.empty()) {
+unsigned char* fetchCurrentFrameBuffer(void* handler) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    if (!hdl || hdl->currMat.empty()) {
         return nullptr;
     }
-    return proc->currentFrame.data;
+    return hdl->currMat.data;
 }
 
-unsigned char* get_output_frame_data(void* processor) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    if (!proc || proc->outputFrame.empty()) {
+unsigned char* fetchOutputFrameBuffer(void* handler) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    if (!hdl || hdl->outMat.empty()) {
         return nullptr;
     }
-    return proc->outputFrame.data;
+    return hdl->outMat.data;
 }
 
-void set_output_frame_data(void* processor, unsigned char* data) {
-    OpenCVProcessor* proc = static_cast<OpenCVProcessor*>(processor);
-    if (!proc || !data) {
+void updateOutputFrameBuffer(void* handler, unsigned char* buffer) {
+    CvHandler* hdl = static_cast<CvHandler*>(handler);
+    if (!hdl || !buffer) {
         return;
     }
     
-    // Create output frame if it doesn't exist
-    if (proc->outputFrame.empty()) {
-        proc->outputFrame = cv::Mat(proc->height, proc->width, CV_8UC(proc->channels));
+    // Initialize out mat if needed
+    if (hdl->outMat.empty()) {
+        hdl->outMat = cv::Mat(hdl->imgHeight, hdl->imgWidth, CV_8UC(hdl->imgChannels));
     }
     
-    // Copy data to output frame
-    size_t dataSize = proc->width * proc->height * proc->channels;
-    std::memcpy(proc->outputFrame.data, data, dataSize);
+    // Transfer buffer data
+    size_t bufferLen = hdl->imgWidth * hdl->imgHeight * hdl->imgChannels;
+    std::memcpy(hdl->outMat.data, buffer, bufferLen);
 }
 
-} // extern "C" 
+} // extern "C"
